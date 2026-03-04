@@ -29,6 +29,9 @@
 - **DeepTrail (Audit):** Added a `--deeptrail` flag to download and sample recent CloudTrail logs from S3.
 - **Temporal Discovery:** Added a `--trail-months` option to specify the lookback period (e.g., 3 months) for CloudTrail sampling, identifying active but unmapped services over a long duration.
 - **Verbose Feedback:** Added a `--verbose` flag to show real-time activity during discovery, including S3 download status and CloudTrail parsing stats.
+- **Deep Discovery Review & Expansion:** Reviewed "unmapped" service activity from DeepTrail results. Added 20+ new discovery modules including CloudFormation, WAF, KMS, SSM, APIGateway, WorkSpaces, ECR, GuardDuty, SecurityHub, Amplify, EKS, ECS, ELB, Athena, EventBridge, Backup, CodeBuild, Config, Redshift, SageMaker, Access Analyzer, Cognito, OpenSearch, and Service Discovery.
+- **Error Resolution:** Fixed IAM parameter validation, Cognito `MaxResults` requirement, and handled missing regional endpoints for services like WorkSpaces and AppRunner.
+- **Improved Scanned Service Tracking:** Updated `SCANNED_SERVICES` to filter out newly added modules from the unmapped report.
 
 ## Final Summary
 - The consolidated script is located at `scripts/discovery/aws_discovery.py`.

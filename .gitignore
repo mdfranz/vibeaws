@@ -3,6 +3,8 @@
 __pycache__/
 *.pyc
 
+discovery-*.md
+
 # Discovery Results (Sensitive Metadata)
 scripts/discovery/results/
 scripts/discovery/active_regions.txt
