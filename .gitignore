@@ -1,0 +1,17 @@
+# Virtual Environment
+.venv/
+__pycache__/
+*.pyc
+
+# Discovery Results (Sensitive Metadata)
+scripts/discovery/results/
+scripts/discovery/active_regions.txt
+
+# Local Cache & Temp files
+scripts/discovery/results/*/cache/
+diag_metrics.py
+diag_metrics_ddb.py
+
+# Environment / Credentials
+.env
+.aws/

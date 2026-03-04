@@ -19,8 +19,8 @@ from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
 
 
-DEFAULT_CLOUDTRAIL_BUCKET = "aws-cloudtrail-logs-647303185053-0e33cf25"
-DEFAULT_ACCOUNT_ID = "647303185053"
+DEFAULT_CLOUDTRAIL_BUCKET = "your-cloudtrail-bucket"
+DEFAULT_ACCOUNT_ID = "123456789012"
 DEFAULT_OUTPUT_DIR = "scripts/discovery/results"
 DEFAULT_LOG_FILE = "discovery.log"
 DEFAULT_MAX_WORKERS = 4
