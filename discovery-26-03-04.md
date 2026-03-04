@@ -37,3 +37,8 @@
 - The consolidated script is located at `scripts/discovery/aws_discovery.py`.
 - It can be run with `uv run scripts/discovery/aws_discovery.py discover [--region REGION] [--deeptrail] [--trail-months N] [--verbose]`.
 - The tool now provides a robust, multi-layered audit: Infrastructure counts, 90-day CloudWatch activity metrics, and "Activity-First" service discovery via long-term CloudTrail sampling.
+- Refactor start: extracted config/constants into `scripts/discovery/discovery_config.py`.
+- Refactor start: moved DeepTrail helpers into `scripts/discovery/deeptrail.py` and report generation into `scripts/discovery/report.py`.
+- Wired `aws_discovery.py` to use new modules and centralized `DISCOVERY_MAP`.
+- Refactor continue: split global discovery into `scripts/discovery/discovery_global.py` and regional discovery into `scripts/discovery/discovery_regional.py`.
+- Moved discovery code/config to `wolkfind/` and results to `wolkfind/results`.

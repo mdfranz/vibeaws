@@ -10,7 +10,7 @@ scripts/discovery/results/
 scripts/discovery/active_regions.txt
 
 # Local Cache & Temp files
-scripts/discovery/results/*/cache/
+wolkfind/results/*/cache/
 diag_metrics.py
 diag_metrics_ddb.py
 
