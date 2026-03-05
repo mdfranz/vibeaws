@@ -6,6 +6,38 @@ Wolkfind is a modular AWS discovery tool designed for high-performance resource 
 
 The tool is organized into several specialized modules within the `wolkfind/` package:
 
+```mermaid
+graph TD
+    subgraph CLI [CLI Interface]
+        UC[User Command] --> DIS[discover]
+        UC --> REP[report]
+    end
+
+    subgraph Discovery [Discovery Phase]
+        DIS --> STS[STS: Assume Role]
+        STS --> GLOBAL[Global Discovery: S3, IAM, R53]
+        STS --> REG[Regional Discovery: Parallel Threads]
+        
+        subgraph Regional [Per Region]
+            REG --> MAP[API Scan: DISCOVERY_MAP]
+            REG --> TRAIL[DeepTrail: S3 Log Sampling]
+        end
+        
+        GLOBAL --> JSON[(Local JSON Results)]
+        MAP --> JSON
+        TRAIL --> JSON
+    end
+
+    subgraph Reporting [Reporting Phase]
+        REP --> LOAD[Load JSON Results]
+        JSON --> LOAD
+        LOAD --> TABLES[Summary Tables]
+        LOAD --> TREE[Detailed Map]
+        LOAD --> STALE[Stale Resource Filter]
+        STALE --> CSV[CSV Export]
+    end
+```
+
 ### 1. Orchestration (`aws_discovery.py`)
 - **CLI Entry Point**: Uses `click` to handle user commands (`discover`, `report`).
 - **Session Management**: Manages `boto3.Session` initialization and AWS Role Assumption (STS).
