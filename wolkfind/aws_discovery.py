@@ -145,16 +145,20 @@ def cli(): pass
 
 @cli.command()
 @click.option("--region", help="Comma-separated regions")
-@click.option("--role-arn", help="AWS Role ARN to assume")
+@click.option("--role-arn", help="Comma-separated AWS Role ARNs to assume")
 @click.option("--deeptrail", is_flag=True)
 @click.option("--trail-months", default=1, type=int)
 @click.option("--detailed", is_flag=True)
 @click.option("--verbose", is_flag=True)
 def discover(region, role_arn, deeptrail, trail_months, detailed, verbose):
-    discovery = AWSDiscovery(role_arn=role_arn, verbose=verbose)
-    regions = [r.strip() for r in region.split(",")] if region else discovery.get_active_regions()
-    discovery.run(regions, DEFAULT_MAX_WORKERS, deeptrail, trail_months)
-    generate_discovery_report(discovery.output_dir, detailed)
+    role_arns = [r.strip() for r in role_arn.split(",")] if role_arn else [None]
+    
+    for arn in role_arns:
+        discovery = AWSDiscovery(role_arn=arn, verbose=verbose)
+        regions = [r.strip() for r in region.split(",")] if region else discovery.get_active_regions()
+        discovery.run(regions, DEFAULT_MAX_WORKERS, deeptrail, trail_months)
+    
+    generate_discovery_report(DEFAULT_OUTPUT_DIR, detailed)
 
 @cli.command()
 @click.option("--output-dir", default=DEFAULT_OUTPUT_DIR)
