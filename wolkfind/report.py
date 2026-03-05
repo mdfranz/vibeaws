@@ -40,6 +40,11 @@ SERVICE_NAMES = {
     "CFN": "CloudFormation",
     "SSM": "SSM Params",
     "APG": "API Gateways",
+    "DMS": "DMS Certs",
+    "DataSync": "DataSync Locs",
+    "RolesAny": "RolesAny Profiles",
+    "DataBrew": "DataBrew Recipes",
+    "Deadline": "Deadline Farms",
 }
 
 REGION_SHORT = {
@@ -154,15 +159,20 @@ def generate_discovery_report(output_dir: str, detailed: bool = False, console: 
             ssm = get_r("ssm", "parameters.json", "Parameters")
             ecr = get_r("ecr", "repositories.json", "repositories")
             bak = get_r("backup", "vaults.json", "BackupVaultList")
+            dms = get_r("dms", "certificates.json", "Certificates")
+            dsync = get_r("datasync", "locations.json", "Locations")
+            rany = get_r("rolesanywhere", "profiles.json", "profiles")
+            dbrew = get_r("databrew", "recipes.json", "Recipes")
+            dl = get_r("deadline", "farms.json", "farms")
 
             region_data.append({
                 "region": region,
                 "Compute": {"EC2": instances, "Lambda": lambdas},
                 "Network": {"VPC": vpcs, "Subnet": subnets},
                 "Storage": {"ECR": ecr, "Backup": bak},
-                "Security": {"KMS": kms},
-                "Data": {"DDB": ddb, "SQS": sqs, "SNS": sns, "RDS": rds},
-                "Apps": {"CFN": cfn, "SSM": ssm}
+                "Security": {"KMS": kms, "DMS": dms, "RolesAny": rany},
+                "Data": {"DDB": ddb, "SQS": sqs, "SNS": sns, "RDS": rds, "DataSync": dsync, "DataBrew": dbrew},
+                "Apps": {"CFN": cfn, "SSM": ssm, "Deadline": dl}
             })
 
         # --- Summary Tables ---

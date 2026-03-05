@@ -21,10 +21,29 @@ from report import generate_discovery_report
 console = Console()
 
 class AWSDiscovery:
-    def __init__(self, profile: Optional[str] = None, output_dir: str = DEFAULT_OUTPUT_DIR, verbose: bool = False):
+    def __init__(self, profile: Optional[str] = None, role_arn: Optional[str] = None, output_dir: str = DEFAULT_OUTPUT_DIR, verbose: bool = False):
         self.session = boto3.Session(profile_name=profile) if profile else boto3.Session()
         self.output_dir = output_dir
         self.verbose = verbose
+
+        if role_arn:
+            if self.verbose: console.print(f"  [dim]Assuming role: {role_arn}...[/]")
+            sts = self.session.client("sts")
+            try:
+                assumed_role = sts.assume_role(
+                    RoleArn=role_arn,
+                    RoleSessionName="WolkfindDiscoverySession"
+                )
+                creds = assumed_role["Credentials"]
+                self.session = boto3.Session(
+                    aws_access_key_id=creds["AccessKeyId"],
+                    aws_secret_access_key=creds["SecretAccessKey"],
+                    aws_session_token=creds["SessionToken"]
+                )
+            except Exception as e:
+                console.print(f"[bold red]Critical Error:[/] Could not assume role {role_arn}. ({e})")
+                sys.exit(1)
+
         try:
             self.account_id = self.session.client("sts").get_caller_identity()["Account"]
         except Exception as e:
@@ -126,12 +145,13 @@ def cli(): pass
 
 @cli.command()
 @click.option("--region", help="Comma-separated regions")
+@click.option("--role-arn", help="AWS Role ARN to assume")
 @click.option("--deeptrail", is_flag=True)
 @click.option("--trail-months", default=1, type=int)
 @click.option("--detailed", is_flag=True)
 @click.option("--verbose", is_flag=True)
-def discover(region, deeptrail, trail_months, detailed, verbose):
-    discovery = AWSDiscovery(verbose=verbose)
+def discover(region, role_arn, deeptrail, trail_months, detailed, verbose):
+    discovery = AWSDiscovery(role_arn=role_arn, verbose=verbose)
     regions = [r.strip() for r in region.split(",")] if region else discovery.get_active_regions()
     discovery.run(regions, DEFAULT_MAX_WORKERS, deeptrail, trail_months)
     generate_discovery_report(discovery.output_dir, detailed)

@@ -9,6 +9,7 @@ import boto3
 from rich.console import Console
 
 from discovery_config import BOTO_CONFIG, DISCOVERY_MAP, LOOKUP_DAYS
+from deeptrail import get_trail_config, download_trail_samples, parse_trail_events
 
 
 def discover_region(
@@ -38,5 +39,17 @@ def discover_region(
         except Exception as e:
             if verbose:
                 console.print(f"  [dim red]! {svc} connection failed in {region}: {e}[/]")
+
+    if deeptrail:
+        config = get_trail_config(session, console, verbose)
+        if config:
+            bucket, prefix = config
+            files = download_trail_samples(
+                session, account_id, account_dir, region, bucket, prefix, trail_days, verbose, console, safe_api_call
+            )
+            if files:
+                events = parse_trail_events(files)
+                write_json(account_dir, region, "cloudtrail", "discovery_events.json", {"Records": events})
+                if verbose: console.print(f"    [dim blue]({region}) Parsed {len(events)} events for discovery.[/]")
 
     return region

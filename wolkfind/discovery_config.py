@@ -80,6 +80,14 @@ SCANNED_SERVICES = {
     "macie2.amazonaws.com",
     "signin.amazonaws.com",
     "q.amazonaws.com",
+    "dms.amazonaws.com",
+    "datasync.amazonaws.com",
+    "rolesanywhere.amazonaws.com",
+    "databrew.amazonaws.com",
+    "deadline.amazonaws.com",
+    "cloudcontrolapi.amazonaws.com",
+    "iotwireless.amazonaws.com",
+    "quicksight.amazonaws.com",
 }
 
 # service -> filename -> (op, result_key, optional kwargs)
@@ -140,4 +148,12 @@ DISCOVERY_MAP: Dict[str, Dict[str, Tuple[str, str, dict]]] = {
     "codepipeline": {"pipelines.json": ("list_pipelines", "pipelines", {})},
     "detective": {"graphs.json": ("list_graphs", "GraphList", {})},
     "macie2": {"session.json": ("get_macie_session", "status", {})},
+    "dms": {"certificates.json": ("describe_certificates", "Certificates", {})},
+    "datasync": {"locations.json": ("list_locations", "Locations", {})},
+    "rolesanywhere": {
+        "profiles.json": ("list_profiles", "profiles", {}),
+        "crls.json": ("list_crls", "crls", {}),
+    },
+    "databrew": {"recipes.json": ("list_recipes", "Recipes", {})},
+    "deadline": {"farms.json": ("list_farms", "farms", {})},
 }
