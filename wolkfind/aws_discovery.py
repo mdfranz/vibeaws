@@ -163,8 +163,9 @@ def discover(region, role_arn, deeptrail, trail_months, detailed, verbose):
 @cli.command()
 @click.option("--output-dir", default=DEFAULT_OUTPUT_DIR)
 @click.option("--detailed", is_flag=True)
+@click.option("--stale", is_flag=True, help="Generate a CSV of stale resources")
 @click.option("--verbose", is_flag=True)
-def report(output_dir, detailed, verbose):
-    generate_discovery_report(output_dir, detailed)
+def report(output_dir, detailed, stale, verbose):
+    generate_discovery_report(output_dir, detailed, stale=stale)
 
 if __name__ == "__main__": cli()

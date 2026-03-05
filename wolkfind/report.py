@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import json
 import os
+import csv
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Set, List
 
 from rich.console import Console
@@ -108,9 +110,12 @@ def extract_identifiers(acc_dir: str, region: str) -> Set[str]:
                 find_strings(data)
     return ids
 
-def generate_discovery_report(output_dir: str, detailed: bool = False, console: Console | None = None):
+def generate_discovery_report(output_dir: str, detailed: bool = False, console: Console | None = None, stale: bool = False):
     console = console or Console()
     accounts = [d for d in os.listdir(output_dir) if os.path.isdir(os.path.join(output_dir, d)) and d.isdigit()]
+    
+    stale_rows = [["account", "asset", "last_date"]] if stale else []
+    stale_date_str = (datetime.now(timezone.utc) - timedelta(days=90)).strftime("%Y-%m-%d") if stale else ""
     
     for account_id in accounts:
         acc_dir = os.path.join(output_dir, account_id)
@@ -193,54 +198,61 @@ def generate_discovery_report(output_dir: str, detailed: bool = False, console: 
             console.print(table)
             console.print("")
 
-        # --- Detailed Tree ---
-        if detailed:
-            tree = Tree(f"[bold white]Account {account_id} Detailed Map[/]")
-            g_node = tree.add("[bold blue]Global Resources[/]")
+        # --- Detailed Tree & Stale Processing ---
+        if detailed or stale:
+            if detailed:
+                tree = Tree(f"[bold white]Account {account_id} Detailed Map[/]")
+                g_node = tree.add("[bold blue]Global Resources[/]")
+            
             if s3_buckets:
-                s3_node = g_node.add("S3 Buckets")
+                if detailed: s3_node = g_node.add("S3 Buckets")
                 for b in s3_buckets:
                     d = str(b.get("CreationDate", ""))[:10]
-                    s3_node.add(f"[dim]{b.get('Name')}{f' ({d})' if d else ''}[/]")
+                    if detailed: s3_node.add(f"[dim]{b.get('Name')}{f' ({d})' if d else ''}[/]")
+                    if stale and d and d < stale_date_str: stale_rows.append([account_id, f"S3 Bucket: {b.get('Name')}", d])
+
             if iam_roles:
-                iam_node = g_node.add("IAM Roles")
+                if detailed: iam_node = g_node.add("IAM Roles")
                 for r in iam_roles:
                     d = str(r.get("CreateDate", ""))[:10]
-                    iam_node.add(f"[dim]{r.get('RoleName')}{f' ({d})' if d else ''}[/]")
+                    if detailed: iam_node.add(f"[dim]{r.get('RoleName')}{f' ({d})' if d else ''}[/]")
+                    if stale and d and d < stale_date_str: stale_rows.append([account_id, f"IAM Role: {r.get('RoleName')}", d])
             
             for rd in region_data:
-                r_node = tree.add(f"[bold magenta]{rd['region']}[/]")
+                if detailed: r_node = tree.add(f"[bold magenta]{rd['region']}[/]")
                 for cat_key in ["Compute", "Network", "Storage", "Security", "Data", "Apps"]:
                     stats = rd[cat_key]
                     if any(stats.values()):
-                        c_node = r_node.add(f"[bold {cat_key.lower()}]{cat_key}[/]")
+                        if detailed: c_node = r_node.add(f"[bold {cat_key.lower()}]{cat_key}[/]")
                         
                         if cat_key == "Network":
                             vpcs = stats.get("VPC", [])
                             subnets = stats.get("Subnet", [])
                             if vpcs:
-                                v_node = c_node.add(f"VPCs ({len(vpcs)})")
+                                if detailed: v_node = c_node.add(f"VPCs ({len(vpcs)})")
                                 for v in vpcs:
                                     v_id = v.get("VpcId")
-                                    vp_node = v_node.add(v_id)
+                                    if detailed: vp_node = v_node.add(v_id)
                                     v_subnets = [s for s in subnets if s.get("VpcId") == v_id]
                                     if v_subnets:
-                                        s_node = vp_node.add(f"Subnets ({len(v_subnets)})")
+                                        if detailed: s_node = vp_node.add(f"Subnets ({len(v_subnets)})")
                                         for sub in v_subnets:
-                                            s_node.add(f"[dim]{sub.get('SubnetId')} ({sub.get('CidrBlock')})[/]")
+                                            if detailed: s_node.add(f"[dim]{sub.get('SubnetId')} ({sub.get('CidrBlock')})[/]")
                             continue
 
                         for svc_key, resources in stats.items():
                             if resources:
                                 svc_name = SERVICE_NAMES.get(svc_key, svc_key)
                                 date_field = SVC_DATE_FIELD.get(svc_key)
-                                s_node = c_node.add(f"{svc_name} ({len(resources)})")
+                                if detailed: s_node = c_node.add(f"{svc_name} ({len(resources)})")
                                 for res in resources:
                                     rid = get_res_id(res)
                                     d = str(res.get(date_field, ""))[:10] if date_field and isinstance(res, dict) else ""
-                                    s_node.add(f"[dim]{rid}{f' ({d})' if d else ''}[/]")
-            console.print(tree)
-            console.print("")
+                                    if detailed: s_node.add(f"[dim]{rid}{f' ({d})' if d else ''}[/]")
+                                    if stale and d and d < stale_date_str: stale_rows.append([account_id, f"{svc_name}: {rid}", d])
+            if detailed:
+                console.print(tree)
+                console.print("")
 
         # --- Deep Discovery Filtering ---
         if detailed:
@@ -267,3 +279,10 @@ def generate_discovery_report(output_dir: str, detailed: bool = False, console: 
                         for action in sorted(list(actions))[:5]: svc_node.add(f"[dim]{action}[/]")
                     console.print(utree)
                     console.print("")
+
+    if stale and len(stale_rows) > 1:
+        csv_path = os.path.join(output_dir, "stale_resources.csv")
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerows(stale_rows)
+        console.print(f"\n[bold green]✓[/] Stale resources CSV written to: [blue]{csv_path}[/]")
