@@ -1,14 +1,15 @@
-# AWS Discovery Tool
+# AWS Discovery Tool (Wolkfind)
 
 A consolidated, high-performance AWS resource discovery and audit tool built with Python, `boto3`, and `rich`. This tool provides a multi-layered view of your AWS environment, from static infrastructure counts to 90-day activity metrics and long-term service discovery via CloudTrail.
 
 ## Key Features
 
-- **Consolidated CLI:** Replaces multiple shell and Python scripts with a single `aws_discovery.py` tool.
+- **Consolidated CLI:** Single entry point via `wolkfind/aws_discovery.py` for all discovery and reporting tasks.
+- **Multi-Account Discovery:** Support for assuming one or more cross-account roles via `--role-arn`.
 - **Robust Pagination:** Unified helper handles all AWS API interactions, ensuring complete data collection in large accounts.
 - **Granular Error Handling:** Gracefully handles `AccessDenied` and other API errors without halting the discovery process.
 - **Multi-Layered Audit:**
-    - **Infrastructure Scan:** Static discovery of VPCs, EC2, RDS, Lambda, SQS, and DynamoDB.
+    - **Infrastructure Scan:** Static discovery across 50+ AWS services (EC2, RDS, Lambda, SQS, DynamoDB, DMS, DataSync, etc.).
     - **Activity Monitoring:** Queries 90 days of CloudWatch metrics to identify "stale" or unused resources.
     - **Temporal Discovery (`--deeptrail`):** Samples months of CloudTrail logs from S3 to identify active services not included in the static scan.
 - **Rich Reporting:**
@@ -25,36 +26,43 @@ A consolidated, high-performance AWS resource discovery and audit tool built wit
 ## Usage
 
 ### 1. Basic Discovery
-Scan all enabled regions for standard resources:
+Scan all enabled regions for standard resources in the current account:
 ```bash
-uv run scripts/discovery/aws_discovery.py discover
+uv run wolkfind/aws_discovery.py discover
 ```
 
-### 2. Deep Audit & Service Discovery
+### 2. Multi-Account Discovery
+Assume one or more roles to scan multiple accounts sequentially:
+```bash
+uv run wolkfind/aws_discovery.py discover --role-arn arn:aws:iam::123456789012:role/AuditRole,arn:aws:iam::987654321098:role/AuditRole
+```
+
+### 3. Deep Audit & Service Discovery
 Scan a specific region, sample 3 months of CloudTrail logs to find unmapped services, and show verbose progress:
 ```bash
-uv run scripts/discovery/aws_discovery.py discover --region us-east-1 --deeptrail --trail-months 3 --verbose
+uv run wolkfind/aws_discovery.py discover --region us-east-1 --deeptrail --trail-months 3 --verbose
 ```
 
-### 3. Detailed Reporting
-Generate a detailed report from previously saved discovery results, showing individual resource names and "Last Active" timestamps:
+### 4. Detailed Reporting
+Generate a detailed report from previously saved discovery results:
 ```bash
-uv run scripts/discovery/aws_discovery.py report --detailed
+uv run wolkfind/aws_discovery.py report --detailed
 ```
 
 ## Output Structure
 
-Results are stored in a hierarchical JSON format suitable for machine processing and long-term archiving:
+Results are stored in a hierarchical JSON format organized by account and region:
 
 ```text
-scripts/discovery/results/
+wolkfind/results/
 └── <account_id>/
     ├── global/
+    │   ├── iam/roles.json
     │   └── s3/buckets.json
     └── <region>/
         ├── ec2/vpcs.json
-        ├── sqs/sqs_enriched.json        # Includes activity metrics
-        ├── dynamodb/tables_enriched.json # Includes activity metrics
+        ├── sqs/queues.json
+        ├── dynamodb/tables.json
         └── cloudtrail/discovery_events.json
 ```
 
