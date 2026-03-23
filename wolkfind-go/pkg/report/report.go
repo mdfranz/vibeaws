@@ -254,7 +254,7 @@ func GenerateDiscoveryReport(outputDir string, detailed bool, stale bool) error 
 		}
 
 		if detailed {
-			renderDetailedTree(accDir)
+			renderDetailedTree(accountID, accDir, regions)
 			renderDeepDiscovery(accDir, regions)
 		}
 		if stale {
@@ -405,20 +405,20 @@ func renderDeepDiscovery(accDir string, regions []string) {
 	}
 }
 
-func renderDetailedTree(accDir string) {
-	pterm.DefaultSection.Println("Resource Inventory")
-	root := pterm.TreeNode{Text: "AWS Account"}
+func renderDetailedTree(accountID, accDir string, regions []string) {
+	fmt.Printf("\n# Resource Inventory (%s)\n\n", accountID)
 
 	// Global
-	globalNode := pterm.TreeNode{Text: "Global"}
 	globalDir := filepath.Join(accDir, "global")
 	if _, err := os.Stat(globalDir); err == nil {
+		fmt.Printf("## Global\n")
 		svcs, _ := os.ReadDir(globalDir)
 		for _, svcDir := range svcs {
 			if !svcDir.IsDir() {
 				continue
 			}
-			svcNode := pterm.TreeNode{Text: svcDir.Name()}
+			
+			var resources []string
 			files, _ := os.ReadDir(filepath.Join(globalDir, svcDir.Name()))
 			for _, f := range files {
 				if !strings.HasSuffix(f.Name(), ".json") {
@@ -430,71 +430,91 @@ func renderDetailedTree(accDir string) {
 						if items, ok := v.([]interface{}); ok {
 							for _, item := range items {
 								name := extractResourceName(svcDir.Name(), f.Name(), item)
-								svcNode.Children = append(svcNode.Children, pterm.TreeNode{Text: name})
+								resources = append(resources, name)
 							}
 						}
 					}
 				}
 			}
-			if len(svcNode.Children) > 0 {
-				globalNode.Children = append(globalNode.Children, svcNode)
+
+			if len(resources) > 0 {
+				fmt.Printf("### %s\n", svcDir.Name())
+				// De-duplicate
+				seen := make(map[string]bool)
+				var unique []string
+				for _, r := range resources {
+					if !seen[r] {
+						seen[r] = true
+						unique = append(unique, r)
+					}
+				}
+				sort.Strings(unique)
+				for _, res := range unique {
+					fmt.Printf("- %s\n", res)
+				}
+				fmt.Println()
 			}
 		}
-	}
-	if len(globalNode.Children) > 0 {
-		root.Children = append(root.Children, globalNode)
 	}
 
 	// Regional
-	regionalEntries, _ := os.ReadDir(accDir)
-	var regions []string
-	for _, re := range regionalEntries {
-		if re.IsDir() && re.Name() != "global" {
-			regions = append(regions, re.Name())
-		}
-	}
 	sort.Strings(regions)
-
 	for _, region := range regions {
-		regionNode := pterm.TreeNode{Text: region}
+		fmt.Printf("## %s\n", region)
 		rDir := filepath.Join(accDir, region)
 		svcs, _ := os.ReadDir(rDir)
-		for _, svcDir := range svcs {
-			if !svcDir.IsDir() || svcDir.Name() == "cloudtrail" {
-				continue
+		
+		// Sort services
+		var svcNames []string
+		for _, s := range svcs {
+			if s.IsDir() && s.Name() != "cloudtrail" {
+				svcNames = append(svcNames, s.Name())
 			}
-			svcNode := pterm.TreeNode{Text: svcDir.Name()}
-			files, _ := os.ReadDir(filepath.Join(rDir, svcDir.Name()))
+		}
+		sort.Strings(svcNames)
+
+		for _, svcName := range svcNames {
+			var resources []string
+			files, _ := os.ReadDir(filepath.Join(rDir, svcName))
 			for _, f := range files {
 				if !strings.HasSuffix(f.Name(), ".json") {
 					continue
 				}
-				data, err := LoadJSON(filepath.Join(rDir, svcDir.Name(), f.Name()))
+				data, err := LoadJSON(filepath.Join(rDir, svcName, f.Name()))
 				if err == nil {
 					for _, v := range data {
 						if items, ok := v.([]interface{}); ok {
 							for _, item := range items {
-								name := extractResourceName(svcDir.Name(), f.Name(), item)
-								svcNode.Children = append(svcNode.Children, pterm.TreeNode{Text: name})
+								name := extractResourceName(svcName, f.Name(), item)
+								resources = append(resources, name)
 							}
 						} else if item, ok := v.(map[string]interface{}); ok {
-							// Handle cases where it's a single object instead of a list
-							name := extractResourceName(svcDir.Name(), f.Name(), item)
-							svcNode.Children = append(svcNode.Children, pterm.TreeNode{Text: name})
+							name := extractResourceName(svcName, f.Name(), item)
+							resources = append(resources, name)
 						}
 					}
 				}
 			}
-			if len(svcNode.Children) > 0 {
-				regionNode.Children = append(regionNode.Children, svcNode)
+
+			if len(resources) > 0 {
+				fmt.Printf("### %s\n", svcName)
+				// De-duplicate
+				seen := make(map[string]bool)
+				var unique []string
+				for _, r := range resources {
+					if !seen[r] {
+						seen[r] = true
+						unique = append(unique, r)
+					}
+				}
+				sort.Strings(unique)
+				for _, res := range unique {
+					fmt.Printf("- %s\n", res)
+				}
+				fmt.Println()
 			}
 		}
-		if len(regionNode.Children) > 0 {
-			root.Children = append(root.Children, regionNode)
-		}
 	}
-
-	pterm.DefaultTree.WithRoot(root).Render()
 }
 
 func extractResourceName(svc, filename string, item interface{}) string {
